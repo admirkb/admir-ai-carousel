@@ -6,38 +6,40 @@
  */
 import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 export namespace Components {
-    interface CarouselComponent {
-        "height": string;
-        "itemsProp": string;
-        "width": string;
+    interface AdmirCarousel3d {
+        "height": number;
+        "items": string;
+        "iterationCount": number;
+        "width": number;
     }
 }
 declare global {
-    interface HTMLCarouselComponentElement extends Components.CarouselComponent, HTMLStencilElement {
+    interface HTMLAdmirCarousel3dElement extends Components.AdmirCarousel3d, HTMLStencilElement {
     }
-    var HTMLCarouselComponentElement: {
-        prototype: HTMLCarouselComponentElement;
-        new (): HTMLCarouselComponentElement;
+    var HTMLAdmirCarousel3dElement: {
+        prototype: HTMLAdmirCarousel3dElement;
+        new (): HTMLAdmirCarousel3dElement;
     };
     interface HTMLElementTagNameMap {
-        "carousel-component": HTMLCarouselComponentElement;
+        "admir-carousel-3d": HTMLAdmirCarousel3dElement;
     }
 }
 declare namespace LocalJSX {
-    interface CarouselComponent {
-        "height"?: string;
-        "itemsProp"?: string;
-        "width"?: string;
+    interface AdmirCarousel3d {
+        "height"?: number;
+        "items"?: string;
+        "iterationCount"?: number;
+        "width"?: number;
     }
     interface IntrinsicElements {
-        "carousel-component": CarouselComponent;
+        "admir-carousel-3d": AdmirCarousel3d;
     }
 }
 export { LocalJSX as JSX };
 declare module "@stencil/core" {
     export namespace JSX {
         interface IntrinsicElements {
-            "carousel-component": LocalJSX.CarouselComponent & JSXBase.HTMLAttributes<HTMLCarouselComponentElement>;
+            "admir-carousel-3d": LocalJSX.AdmirCarousel3d & JSXBase.HTMLAttributes<HTMLAdmirCarousel3dElement>;
         }
     }
 }
