@@ -13,8 +13,24 @@ export namespace Components {
         "width": number;
     }
 }
+export interface AdmirCarousel3dCustomEvent<T> extends CustomEvent<T> {
+    detail: T;
+    target: HTMLAdmirCarousel3dElement;
+}
 declare global {
+    interface HTMLAdmirCarousel3dElementEventMap {
+        "slideInView": number;
+        "animationEndWithDelay": { index: number, delay: number };
+    }
     interface HTMLAdmirCarousel3dElement extends Components.AdmirCarousel3d, HTMLStencilElement {
+        addEventListener<K extends keyof HTMLAdmirCarousel3dElementEventMap>(type: K, listener: (this: HTMLAdmirCarousel3dElement, ev: AdmirCarousel3dCustomEvent<HTMLAdmirCarousel3dElementEventMap[K]>) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+        addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLAdmirCarousel3dElementEventMap>(type: K, listener: (this: HTMLAdmirCarousel3dElement, ev: AdmirCarousel3dCustomEvent<HTMLAdmirCarousel3dElementEventMap[K]>) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: Document, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+        removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
     }
     var HTMLAdmirCarousel3dElement: {
         prototype: HTMLAdmirCarousel3dElement;
@@ -29,6 +45,8 @@ declare namespace LocalJSX {
         "height"?: number;
         "items"?: string;
         "iterationCount"?: number;
+        "onAnimationEndWithDelay"?: (event: AdmirCarousel3dCustomEvent<{ index: number, delay: number }>) => void;
+        "onSlideInView"?: (event: AdmirCarousel3dCustomEvent<number>) => void;
         "width"?: number;
     }
     interface IntrinsicElements {

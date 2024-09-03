@@ -1,4 +1,4 @@
-import { Component, h, State, Prop, Element } from '@stencil/core';
+import { Component, h, State, Prop, Element, Event, EventEmitter, Listen } from '@stencil/core';
 
 @Component({
   tag: 'admir-carousel-3d',
@@ -6,10 +6,10 @@ import { Component, h, State, Prop, Element } from '@stencil/core';
   shadow: true
 })
 export class Carousel3D {
-  @Prop() items: string; // Receive the items as a string
-  @Prop() height: number; // Receive height as a prop
-  @Prop() width: number;  // Receive width as a prop
-  @Prop() iterationCount: number = 1; // Number of iterations
+  @Prop() items: string;
+  @Prop() height: number;
+  @Prop() width: number;
+  @Prop() iterationCount: number = 1;
 
   @State() currentIndex: number = 0;
   @State() isPaused: boolean = false;
@@ -18,24 +18,39 @@ export class Carousel3D {
   private timeoutId: any = null;
   private carouselElement!: HTMLElement;
 
-  // Dimensions and perspective
   private basePerspective: number = 1000;
   private perspective: number;
   private translateZ: number;
 
-  @Element() el: HTMLElement; // Reference to the component element
+  @Element() el: HTMLElement;
+
+  @Event() slideInView: EventEmitter<number>;
+  @Event() animationEndWithDelay: EventEmitter<{ index: number, delay: number }>;
+
+  @Listen('animationEndWithDelay', { target: 'window' })
+  handleAnimationEndWithDelay(event: CustomEvent) {
+    const currentTime = new Date().toLocaleTimeString();
+    console.log(`[${currentTime}] Animation ended for slide ${event.detail.index + 1} with a delay of ${event.detail.delay} seconds`);
+  }
 
   componentWillLoad() {
-    // Parse the items from the prop
     this.parsedItems = JSON.parse(this.items);
-
     this.rotationAngle = 360 / this.parsedItems.length;
-
-    // Calculate the appropriate translateZ based on the number of items
     this.translateZ = this.calculateTranslateZ(this.parsedItems.length);
-
-    // Adjust the perspective to keep items the same size
     this.perspective = this.calculatePerspective(this.parsedItems.length);
+  }
+
+  componentDidLoad() {
+    this.el.style.setProperty('--admir-carousel-width', `${this.width}px`);
+    this.el.style.setProperty('--admir-carousel-height', `${this.height}px`);
+
+    this.carouselElement.addEventListener('transitionend', this.onTransitionEnd.bind(this));
+
+    // Emit the event for the initial slide
+    this.emitSlideInView();
+    this.emitAnimationEndWithDelay(true); // Emit event for the initial slide
+
+    this.startAutoRotation();
   }
 
   private calculateTranslateZ(itemCount: number): number {
@@ -46,24 +61,55 @@ export class Carousel3D {
     return this.basePerspective / Math.cos(Math.PI / itemCount);
   }
 
-  componentDidLoad() {
-    this.el.style.setProperty('--admir-carousel-width', `${this.width}px`);
-    this.el.style.setProperty('--admir-carousel-height', `${this.height}px`);
+  private emitSlideInView() {
+    const currentTime = new Date().toLocaleTimeString();
+    console.log(`[${currentTime}] Slide ${this.currentIndex + 1} is fully in view`);
+    this.slideInView.emit(this.currentIndex);
+  }
 
-    this.startAutoRotation(); // Start automatic rotation when the component loads
+  private emitAnimationEndWithDelay(isInitialSlide = false) {
+    const currentItem = this.parsedItems[this.currentIndex];
+    const delay = currentItem.delay * 1000;
+
+    // Clear any existing timeout
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+
+    // Set a new timeout
+    this.timeoutId = setTimeout(() => {
+      this.animationEndWithDelay.emit({
+        index: this.currentIndex,
+        delay: currentItem.delay
+      });
+
+      if (isInitialSlide) {
+        this.handleAnimationEndWithDelay(new CustomEvent('animationEndWithDelay', {
+          detail: { index: this.currentIndex, delay: currentItem.delay }
+        }));
+      }
+
+      this.rotateCarousel('next');
+    }, delay);
+  }
+
+  private onTransitionEnd(_event: TransitionEvent) {
+    this.emitSlideInView();
+    this.emitAnimationEndWithDelay();
   }
 
   private rotateCarousel(direction: 'prev' | 'next') {
     if (this.isPaused) return;
-  
+
     const previousIndex = this.currentIndex;
-  
+
     if (direction === 'next') {
       this.currentIndex = (this.currentIndex + 1) % this.parsedItems.length;
     } else {
       this.currentIndex = (this.currentIndex - 1 + this.parsedItems.length) % this.parsedItems.length;
     }
-  
+
     if (previousIndex === this.parsedItems.length - 1 && this.currentIndex === 0) {
       this.handleWrapAround('next');
     } else if (previousIndex === 0 && this.currentIndex === this.parsedItems.length - 1) {
@@ -71,54 +117,31 @@ export class Carousel3D {
     } else {
       this.updateCarousel();
     }
-  
-    this.startAutoRotation();
   }
-  
-  
 
   private handleWrapAround(direction: 'next' | 'prev') {
-    // Adjust rotation to +36 degrees for a smoother transition to the next slide
-    const rotation = direction === 'next' ? 36 : -36;
-    this.carouselElement.style.transition = 'none'; // Temporarily disable transition
+    const wrapAngle = direction === 'next' ? this.rotationAngle : -this.rotationAngle;
+    const rotation = -this.currentIndex * this.rotationAngle + wrapAngle;
+
+    this.carouselElement.style.transition = 'none';
     this.carouselElement.style.transform = `rotateY(${rotation}deg)`;
-  
-    console.log(`Handle wrap-around: rotation ${rotation} degrees`);
-  
-    // Force a reflow to apply the transform immediately
+
     this.carouselElement.getBoundingClientRect();
-  
-    // Re-enable transition and reset rotation
+
     setTimeout(() => {
       this.carouselElement.style.transition = 'transform 1s ease-in-out';
       this.updateCarousel();
     }, 20);
   }
-  
-  
-  
 
   private updateCarousel() {
     const rotation = -this.currentIndex * this.rotationAngle;
     this.carouselElement.style.transition = 'transform 1s ease-in-out';
     this.carouselElement.style.transform = `rotateY(${rotation}deg)`;
-  
-    console.log(`Updating carousel: rotation ${rotation} degrees`);
   }
-  
-  
 
   private startAutoRotation() {
-    if (this.timeoutId !== null) {
-      clearTimeout(this.timeoutId);
-    }
-
-    const currentItem = this.parsedItems[this.currentIndex];
-    this.timeoutId = setTimeout(() => {
-      this.rotateCarousel('next');
-    }, currentItem.delay * 1000);
-
-    console.log(`Starting auto-rotation. Next rotation in ${currentItem.delay} seconds`);
+    this.emitAnimationEndWithDelay();
   }
 
   private pauseOnItem(index: number) {
@@ -126,28 +149,24 @@ export class Carousel3D {
 
     this.isPaused = true;
 
-    // Remove auto-rotation animation
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
 
-    // Update carousel to the paused position
     this.currentIndex = index;
     this.updateCarousel();
 
-    // Resume animation after a short delay
     setTimeout(() => {
       this.isPaused = false;
-      this.startAutoRotation(); // Restart the automatic rotation
-    }, 2000); // Fixed delay for resuming
-
-    console.log(`Paused on item ${index}`);
+      this.startAutoRotation();
+    }, 2000);
   }
 
   render() {
     const itemWidth = this.width;
     const itemHeight = this.height;
-  
+
     return (
       <div
         class="carousel-container"
@@ -171,7 +190,6 @@ export class Carousel3D {
               }}
               onClick={() => this.pauseOnItem(index)}
             >
-              {/* Add a text element to show the delay duration */}
               <div class="duration-label">
                 {item.delay} s
               </div>
@@ -185,5 +203,4 @@ export class Carousel3D {
       </div>
     );
   }
-  
 }

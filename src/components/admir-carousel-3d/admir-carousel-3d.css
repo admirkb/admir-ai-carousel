@@ -38,13 +38,11 @@
   box-sizing: border-box;
   cursor: pointer;
   overflow: hidden;
-  /* Ensure the label fits within the item */
 }
 
 .duration-label {
   position: absolute;
   bottom: 10px;
-  /* Adjust as needed */
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.6);
@@ -54,7 +52,6 @@
   font-size: 14px;
   text-align: center;
 }
-
 
 .controls {
   text-align: center;
