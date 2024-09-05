@@ -10,9 +10,13 @@ export class Carousel3D {
   @Prop() height: number;
   @Prop() width: number;
   @Prop() iterationCount: number = 1;
+  @Prop() timingFunction: string = 'ease-in-out';  // Existing prop for timing function
+  @Prop() animationDuration: string = '1s';  // New prop for animation duration
 
   @State() currentIndex: number = 0;
+  @State() currentIteration: number = 0;
   @State() isPaused: boolean = false;
+
   private parsedItems: Array<{ image: string; delay: number }> = [];
   private rotationAngle: number;
   private timeoutId: any = null;
@@ -41,6 +45,7 @@ export class Carousel3D {
   }
 
   componentDidLoad() {
+    this.currentIteration = 0; // Reset iteration count
     this.el.style.setProperty('--admir-carousel-width', `${this.width}px`);
     this.el.style.setProperty('--admir-carousel-height', `${this.height}px`);
 
@@ -110,6 +115,16 @@ export class Carousel3D {
       this.currentIndex = (this.currentIndex - 1 + this.parsedItems.length) % this.parsedItems.length;
     }
 
+    // Check if the carousel has completed one full spin
+    if (previousIndex === this.parsedItems.length - 1 && this.currentIndex === 0) {
+      this.currentIteration++;
+
+      if (this.currentIteration >= this.iterationCount) {
+        this.isPaused = true;
+        return; // Stop the carousel after completing the specified iterations
+      }
+    }
+
     if (previousIndex === this.parsedItems.length - 1 && this.currentIndex === 0) {
       this.handleWrapAround('next');
     } else if (previousIndex === 0 && this.currentIndex === this.parsedItems.length - 1) {
@@ -129,19 +144,21 @@ export class Carousel3D {
     this.carouselElement.getBoundingClientRect();
 
     setTimeout(() => {
-      this.carouselElement.style.transition = 'transform 1s ease-in-out';
+      this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;  // Use the animationDuration and timingFunction props
       this.updateCarousel();
     }, 20);
   }
 
   private updateCarousel() {
     const rotation = -this.currentIndex * this.rotationAngle;
-    this.carouselElement.style.transition = 'transform 1s ease-in-out';
+    this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;  // Use the animationDuration and timingFunction props
     this.carouselElement.style.transform = `rotateY(${rotation}deg)`;
   }
 
   private startAutoRotation() {
-    this.emitAnimationEndWithDelay();
+    if (this.currentIteration < this.iterationCount) {
+      this.emitAnimationEndWithDelay();
+    }
   }
 
   private pauseOnItem(index: number) {
