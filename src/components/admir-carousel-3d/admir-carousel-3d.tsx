@@ -10,8 +10,11 @@ export class Carousel3D {
   @Prop() height: number;
   @Prop() width: number;
   @Prop() iterationCount: number = 1;
-  @Prop() timingFunction: string = 'ease-in-out';  // Existing prop for timing function
-  @Prop() animationDuration: string = '1s';  // New prop for animation duration
+  @Prop() timingFunction: string = 'ease-in-out';
+  @Prop() animationDuration: string = '1s';
+  @Prop() elevationAngle: number = 0;
+  @Prop() rotateXAngle: number = 0;  // Changed from elevationAngle
+  @Prop() rotateZAngle: number = 30;  // Changed from elevationAngle
 
   @State() currentIndex: number = 0;
   @State() currentIteration: number = 0;
@@ -21,6 +24,7 @@ export class Carousel3D {
   private rotationAngle: number;
   private timeoutId: any = null;
   private carouselElement!: HTMLElement;
+  private videoRefs: { [key: number]: HTMLVideoElement } = {};
 
   private basePerspective: number = 1000;
   private perspective: number;
@@ -45,15 +49,14 @@ export class Carousel3D {
   }
 
   componentDidLoad() {
-    this.currentIteration = 0; // Reset iteration count
+    this.currentIteration = 0;
     this.el.style.setProperty('--admir-carousel-width', `${this.width}px`);
     this.el.style.setProperty('--admir-carousel-height', `${this.height}px`);
 
     this.carouselElement.addEventListener('transitionend', this.onTransitionEnd.bind(this));
 
-    // Emit the event for the initial slide
     this.emitSlideInView();
-    this.emitAnimationEndWithDelay(true); // Emit event for the initial slide
+    this.emitAnimationEndWithDelay(true);
 
     this.startAutoRotation();
   }
@@ -66,23 +69,62 @@ export class Carousel3D {
     return this.basePerspective / Math.cos(Math.PI / itemCount);
   }
 
+  private isVideo(url: string): boolean {
+    const videoExtensions = ['.mp4', '.webm', '.ogg'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+  }
+
+  private renderMediaElement(item: { image: string; delay: number }, index: number) {
+    if (this.isVideo(item.image)) {
+      return (
+        <video
+          ref={(el) => {
+            if (el) this.videoRefs[index] = el;
+          }}
+          muted
+          playsInline
+          loop
+        >
+          <source src={item.image} type={`video/${item.image.split('.').pop()}`} />
+          Your browser does not support the video tag.
+        </video>
+      );
+    } else {
+      return <img src={item.image} alt="Carousel item" loading="lazy" />;
+    }
+  }
+
   private emitSlideInView() {
     const currentTime = new Date().toLocaleTimeString();
-    console.log(`[${currentTime}] Slide ${this.currentIndex + 1} is fully in view`);
+    const currentItem = this.parsedItems[this.currentIndex];
+    const fileType = this.isVideo(currentItem.image) ? 'video' : 'image';
+    console.log(`[${currentTime}] Slide ${this.currentIndex + 1} is fully in view. File type: ${fileType}`);
     this.slideInView.emit(this.currentIndex);
+
+    if (fileType === 'video') {
+      const video = this.videoRefs[this.currentIndex];
+      if (video) {
+        video.play().catch(e => console.error('Error playing video:', e));
+      }
+    }
+
+    Object.entries(this.videoRefs).forEach(([index, video]) => {
+      if (parseInt(index) !== this.currentIndex) {
+        video.pause();
+        video.currentTime = 0;
+      }
+    });
   }
 
   private emitAnimationEndWithDelay(isInitialSlide = false) {
     const currentItem = this.parsedItems[this.currentIndex];
     const delay = currentItem.delay * 1000;
 
-    // Clear any existing timeout
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
 
-    // Set a new timeout
     this.timeoutId = setTimeout(() => {
       this.animationEndWithDelay.emit({
         index: this.currentIndex,
@@ -115,13 +157,12 @@ export class Carousel3D {
       this.currentIndex = (this.currentIndex - 1 + this.parsedItems.length) % this.parsedItems.length;
     }
 
-    // Check if the carousel has completed one full spin
     if (previousIndex === this.parsedItems.length - 1 && this.currentIndex === 0) {
       this.currentIteration++;
 
       if (this.currentIteration >= this.iterationCount) {
         this.isPaused = true;
-        return; // Stop the carousel after completing the specified iterations
+        return;
       }
     }
 
@@ -136,23 +177,23 @@ export class Carousel3D {
 
   private handleWrapAround(direction: 'next' | 'prev') {
     const wrapAngle = direction === 'next' ? this.rotationAngle : -this.rotationAngle;
-    const rotation = -this.currentIndex * this.rotationAngle + wrapAngle;
+    const carouselRotation = -this.currentIndex * this.rotationAngle + wrapAngle;
 
     this.carouselElement.style.transition = 'none';
-    this.carouselElement.style.transform = `rotateY(${rotation}deg)`;
+    this.carouselElement.style.transform = `rotateX(${this.rotateXAngle}deg) rotateY(${carouselRotation}deg)`;
 
     this.carouselElement.getBoundingClientRect();
 
     setTimeout(() => {
-      this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;  // Use the animationDuration and timingFunction props
+      this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;
       this.updateCarousel();
     }, 20);
   }
 
   private updateCarousel() {
-    const rotation = -this.currentIndex * this.rotationAngle;
-    this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;  // Use the animationDuration and timingFunction props
-    this.carouselElement.style.transform = `rotateY(${rotation}deg)`;
+    const carouselRotation = -this.currentIndex * this.rotationAngle;
+    this.carouselElement.style.transition = `transform ${this.animationDuration} ${this.timingFunction}`;
+    this.carouselElement.style.transform = `rotateX(${this.rotateXAngle}deg) rotateY(${carouselRotation}deg)`;
   }
 
   private startAutoRotation() {
@@ -187,11 +228,19 @@ export class Carousel3D {
     return (
       <div
         class="carousel-container"
-        style={{ width: `${this.width}px`, height: `${this.height}px`, perspective: `${this.perspective}px` }}
+        style={{ 
+          width: `${this.width}px`, 
+          height: `${this.height}px`, 
+          perspective: `${this.perspective}px`,
+          transform: `rotateZ(${this.rotateZAngle}deg)` 
+        }}
       >
         <div
           class="carousel"
           ref={el => this.carouselElement = el as HTMLElement}
+          style={{
+            transform: `rotateX(${this.rotateXAngle}deg)` 
+          }}
         >
           {this.parsedItems.map((item, index) => (
             <div
@@ -199,14 +248,11 @@ export class Carousel3D {
               style={{
                 width: `${itemWidth}px`,
                 height: `${itemHeight}px`,
-                backgroundColor: `hsl(${index * 60}, 100%, 50%)`,
-                backgroundImage: `url(${item.image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
                 transform: `rotateY(${index * this.rotationAngle}deg) translateZ(${this.translateZ}px)`
               }}
               onClick={() => this.pauseOnItem(index)}
             >
+              {this.renderMediaElement(item, index)}
               <div class="duration-label">
                 {item.delay} s
               </div>

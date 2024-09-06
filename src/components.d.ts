@@ -8,9 +8,12 @@ import { HTMLStencilElement, JSXBase } from "@stencil/core/internal";
 export namespace Components {
     interface AdmirCarousel3d {
         "animationDuration": string;
+        "elevationAngle": number;
         "height": number;
         "items": string;
         "iterationCount": number;
+        "rotateXAngle": number;
+        "rotateZAngle": number;
         "timingFunction": string;
         "width": number;
     }
@@ -45,11 +48,14 @@ declare global {
 declare namespace LocalJSX {
     interface AdmirCarousel3d {
         "animationDuration"?: string;
+        "elevationAngle"?: number;
         "height"?: number;
         "items"?: string;
         "iterationCount"?: number;
         "onAnimationEndWithDelay"?: (event: AdmirCarousel3dCustomEvent<{ index: number, delay: number }>) => void;
         "onSlideInView"?: (event: AdmirCarousel3dCustomEvent<number>) => void;
+        "rotateXAngle"?: number;
+        "rotateZAngle"?: number;
         "timingFunction"?: string;
         "width"?: number;
     }
